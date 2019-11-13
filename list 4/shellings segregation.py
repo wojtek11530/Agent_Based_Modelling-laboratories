@@ -38,7 +38,10 @@ class ShellingsSegregation:
                 self.lattice[i][j] = self.Agent(self.EMPTY, i, j)
 
         self.agents = []
-        self.agents_in_each_step = []
+        self.agents_at_the_start = None
+        self.frame_no = 0
+        self.unhappy_agents_before_move_in_each_step = []
+        self.unhappy_agents_after_move_in_each_step = []
 
         self.busy_locations = self.generate_starting_locations(blue_agents_number, red_agents_number)
         self.init_agents(blue_agents_number, red_agents_number)
@@ -87,42 +90,50 @@ class ShellingsSegregation:
         if draw_plots:
             self.draw_lattice(cycle_no)
         if animate:
-            self.agents_in_each_step.append(np.copy(self.agents))
+            self.agents_at_the_start = copy.deepcopy(self.agents)
 
         while any_moved:
             cycle_no = cycle_no + 1
             any_moved = False
-            moved_agents = 0
+            moved_agents_number = 0
+
+            if animate:
+                moved_agents_before_move = []
+                moved_agents_after_move = []
+
             for agent in self.agents:
                 closest_agents = self.find_m_t_closest_agents_for(agent)
                 the_same_type_neighbours_no = self.the_same_type_neighbours_number(agent, closest_agents)
-                if self.j_t is not None:
-                    if the_same_type_neighbours_no / self.m_t < self.j_t:
-                        any_moved = True
-                        moved_agents = moved_agents + 1
-                        self.move_agent_to_empty_place(agent)
-                elif agent.type == self.BLUE:
-                    if the_same_type_neighbours_no / self.m_t < self.j_b:
-                        any_moved = True
-                        moved_agents = moved_agents + 1
-                        self.move_agent_to_empty_place(agent)
-                else:
-                    if the_same_type_neighbours_no / self.m_t < self.j_r:
-                        any_moved = True
-                        moved_agents = moved_agents + 1
-                        self.move_agent_to_empty_place(agent)
 
-            print("Step " + str(cycle_no) + ', moved agents: ' + str(moved_agents))
+                move_agent = False
+                if self.j_t is not None:
+                    move_agent = the_same_type_neighbours_no / self.m_t < self.j_t
+                elif agent.type == self.BLUE:
+                    move_agent = the_same_type_neighbours_no / self.m_t < self.j_b
+                else:
+                    move_agent = the_same_type_neighbours_no / self.m_t < self.j_r
+
+                if move_agent:
+                    any_moved = True
+                    moved_agents_number = moved_agents_number + 1
+                    if animate:
+                        moved_agents_before_move.append(copy.copy(agent))
+                        self.move_agent_to_empty_place(agent)
+                        moved_agents_after_move.append(copy.copy(agent))
+
+            print("Step " + str(cycle_no) + ', moved agents: ' + str(moved_agents_number))
             if draw_plots and cycle_no % 10 == 0:
                 self.draw_lattice(cycle_no)
             if animate:
-                copy_agents = copy.deepcopy(self.agents)
-                self.agents_in_each_step.append(copy_agents)
+                self.unhappy_agents_before_move_in_each_step.append(moved_agents_before_move)
+                self.unhappy_agents_after_move_in_each_step.append(moved_agents_after_move)
 
         print("End")
+
         if draw_plots:
             self.draw_lattice(cycle_no)
         if animate:
+            self.frame_no = cycle_no+1
             self.animate_simulation()
 
         segregation_index = self.calculate_similar_neighbour_index()
@@ -212,33 +223,44 @@ class ShellingsSegregation:
             patches_to_return = []
             return patches_to_return
 
-        def animate(step):
+        def animate(frame):
             patches_to_return = []
-            agents_in_step = self.agents_in_each_step[step]
-            if step >= 1:
-                agents_in_prev_step = self.agents_in_each_step[step - 1]
-                for agent in agents_in_prev_step:
+            if frame == 0:
+                agents_to_draw = self.agents_at_the_start
+                for agent in agents_to_draw:
+                    color = 'blue'
+                    if agent.type == ShellingsSegregation.RED:
+                        color = 'red'
+                    rectangle = Rectangle((agent.y_loc, self.lattice_size - agent.x_loc - 1), 1, 1, facecolor=color,
+                                          alpha=1)
+                    ax.add_patch(rectangle)
+                    patches_to_return.append(rectangle)
+            if frame >= 1:
+
+                agents_before_move = self.unhappy_agents_before_move_in_each_step[frame-1]
+                for agent in agents_before_move:
                     color = 'white'
                     rectangle = Rectangle((agent.y_loc, self.lattice_size - agent.x_loc - 1), 1, 1, facecolor=color,
                                           alpha=1)
                     ax.add_patch(rectangle)
                     patches_to_return.append(rectangle)
 
-            for agent in agents_in_step:
-                color = 'blue'
-                if agent.type == ShellingsSegregation.RED:
-                    color = 'red'
-                rectangle = Rectangle((agent.y_loc, self.lattice_size - agent.x_loc - 1), 1, 1, facecolor=color,
-                                      alpha=1)
-                ax.add_patch(rectangle)
-                patches_to_return.append(rectangle)
+                agents_after_move = self.unhappy_agents_after_move_in_each_step[frame-1]
+                for agent in agents_after_move:
+                    color = 'blue'
+                    if agent.type == ShellingsSegregation.RED:
+                        color = 'red'
+                    rectangle = Rectangle((agent.y_loc, self.lattice_size - agent.x_loc - 1), 1, 1, facecolor=color,
+                                          alpha=1)
+                    ax.add_patch(rectangle)
+                    patches_to_return.append(rectangle)
 
-            ax.set_title("Cycle no: " + str(step))
-            print("Step " + str(step) + " animated")
+            ax.set_title("Cycle no: " + str(frame))
+            print("Frame " + str(frame) + " animated")
             return patches_to_return
 
         fig, ax = plt.subplots()
-        frame_amount = len(self.agents_in_each_step)
+        frame_amount = self.frame_no
         interval_time = 300
         anim = animation.FuncAnimation(fig, animate,
                                        init_func=init_animation,
@@ -248,10 +270,10 @@ class ShellingsSegregation:
                                        repeat=False)
 
         if self.j_t is not None:
-            gif_title = "Segregation pop=" + str(len(self.agents) / 2) + "L=" + str(self.lattice_size) + " m_t=" + str(
+            gif_title = "2Segregation pop=" + str(len(self.agents) / 2) + "L=" + str(self.lattice_size) + " m_t=" + str(
                 self.m_t) + " j_t=" + str(self.j_t)
         else:
-            gif_title = "Segregation pop=" + str(len(self.agents) / 2) + "L=" + str(self.lattice_size) + " m_t=" + str(
+            gif_title = "2Segregation pop=" + str(len(self.agents) / 2) + "L=" + str(self.lattice_size) + " m_t=" + str(
                 self.m_t) + " j_b=" + str(self.j_b) + " j_r=" + str(self.j_r)
         anim.save(gif_title + '.gif', writer='imagemagick')
         # plt.show()
@@ -350,8 +372,8 @@ def task_six():
         red_agents_number=250,
         m_t=8,
         lattice_size=100,
-        j_b=3/8,
-        j_r=6/8,
+        j_b=3 / 8,
+        j_r=6 / 8,
         j_t=None
     )
     segregation_ind, cycle_no = shellings_segregation.run_simulation(True, True)
@@ -362,8 +384,8 @@ def task_six():
 
 
 if __name__ == "__main__":
-    # task_one()
+    task_one_and_two()
     # task_three()
     # task_four()
     # task_five()
-    task_six()
+    # task_six()
