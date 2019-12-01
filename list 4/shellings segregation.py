@@ -320,6 +320,7 @@ class ShellingsSegregation:
                     patches_to_return.append(rectangle)
 
             ax.set_title("Cycle no: " + str(frame))
+            ax.set_title("Cycle no: " + str(frame))
             print("Frame " + str(frame) + " animated")
             return patches_to_return
 
