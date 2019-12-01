@@ -7,11 +7,12 @@ from matplotlib import animation
 
 
 class TrafficModel(object):
-    # class agent with parameters: kind and localization
+
     class Car:
         def __init__(self, location, traffic_model):
             self.traffic_model = traffic_model
-            self.velocity = np.random.randint(self.traffic_model.max_velocity)
+
+            self.velocity = 0
             self.location = location
 
     def __init__(self, road_length, max_velocity, car_density, prob_of_slowing, time):
@@ -22,11 +23,11 @@ class TrafficModel(object):
         self.time = time
 
         self.car_density = car_density
-        car_numbers = int(self.road_length * car_density)
-
         self.cars = []
+        car_numbers = int(np.ceil(self.road_length * car_density))
         self.init_cars(car_numbers)
 
+        self.average_velocity_in_each_step = np.zeros(self.time + 1)
         self.road_occupation_in_each_step = []
 
     def init_cars(self, car_numbers):
@@ -37,21 +38,32 @@ class TrafficModel(object):
             self.road_occupation[location] = True
             self.cars.append(new_car)
 
-    def run_simulation(self):
-        # self.draw_road()
+    def run_simulation(self, animate_simulation=False):
 
         self.road_occupation_in_each_step.append(self.road_occupation)
+
+        self.average_velocity_in_each_step[0] = self.calculate_average_velocity()
 
         for i in range(self.time):
             self.accelerate_cars()
             self.slow_down_cars()
             self.random_slow_down_cars()
             self.move_cars()
-
             self.road_occupation_in_each_step.append(copy.copy(self.road_occupation))
+            self.average_velocity_in_each_step[i] = self.calculate_average_velocity()
             print("Step " + str(i))
 
-        self.animate_simulation()
+        if animate_simulation:
+            self.animate_simulation()
+
+    def calculate_average_velocity(self):
+        velocities = []
+        for car in self.cars:
+            velocities.append(car.velocity)
+        return np.mean(velocities)
+
+    def get_average_velocity_for_whole_simulation(self):
+        return np.mean(self.average_velocity_in_each_step)
 
     def draw_road(self):
         fig, ax = plt.subplots()
@@ -143,11 +155,97 @@ class TrafficModel(object):
                     " time=" + str(self.time)
 
         anim.save(gif_title + '.gif', writer='imagemagick')
+        print(gif_title)
+
+    def visualize_animation(self):
+        fig, ax = plt.subplots()
+        ax.set_xlim(0, self.road_length)
+        ax.set_ylim(0, self.time + 1)
+        ax.set_aspect('equal')
+
+        step = 0
+        for road_occupation in self.road_occupation_in_each_step:
+            for cell_loc in range(self.road_length):
+                if road_occupation[cell_loc] is True:
+                    rectangle = Rectangle((cell_loc, step), 1, 1, facecolor='black', alpha=1)
+                    ax.add_patch(rectangle)
+
+            step = step + 1
+
+        plt.xlabel(r'Position')
+        plt.ylabel(r'Step')
+        plt.title(r'Visualization of simulation' +
+                  r', $p=$' + str(self.prob_of_slowing) +
+                  r', $\rho=$' + str(self.car_density) +
+                  r', $L=$' + str(self.road_length) +
+                  r', $V_{max}=$' + str(self.max_velocity) +
+                  r', $T=$' + str(self.time))
+        plt.grid()
+        plot_title = 'Visualization of simulation ' + \
+                     "L=" + str(self.road_length) + \
+                     " p=" + str(self.prob_of_slowing) + \
+                     " rho=" + str(self.car_density) + \
+                     " V_max=" + str(self.max_velocity) + \
+                     " time=" + str(self.time)
+        plt.savefig(plot_title + '.png')
+
+
+def task_one():
+    for prob in [0.1, 0.3, 0.6, 0.9]:
+        myTraffic = TrafficModel(road_length=30,
+                                 max_velocity=5,
+                                 prob_of_slowing=prob,
+                                 car_density=0.3, time=100)
+        myTraffic.run_simulation(animate_simulation=True)
+
+
+def task_two():
+    densities = np.arange(0.01, 0.99, 0.01)
+    probabilities = [0, 0.1, 0.2, 0.3, 0.9]
+    for prob in probabilities:
+        N = 10
+        average_velocities = np.zeros((N, len(densities)))
+        for i in range(N):
+            j = 0
+            for density in densities:
+                traffic_simulation = TrafficModel(road_length=30,
+                                                  max_velocity=5,
+                                                  prob_of_slowing=prob,
+                                                  car_density=density, time=100)
+                traffic_simulation.run_simulation(animate_simulation=False)
+
+                average_velocities[i][j] = traffic_simulation.get_average_velocity_for_whole_simulation()
+                j = j + 1
+
+        draw_av_velocities_plot(densities, np.mean(average_velocities, axis=0), prob)
+
+    plt.xlabel(r'density $\rho$')
+    plt.ylabel(r'Average velocity')
+    plt.title(r'Dependency between average velocities and cars densities')
+    plt.grid()
+    file_title = 'av_velocities_plot1' + '.png'
+    plt.legend()
+    plt.savefig(file_title)
+
+
+def draw_av_velocities_plot(densities, average_velocities, slowing_probability):
+    plt.plot(densities, average_velocities, '-.', label=r'p=' + str(slowing_probability))
+
+
+def task_three():
+    densities = [0.1, 0.2, 0.6]
+    probability = 0.3
+    for density in densities:
+        myTraffic = TrafficModel(road_length=100,
+                                 max_velocity=5,
+                                 prob_of_slowing=probability,
+                                 car_density=density, time=100)
+
+        myTraffic.run_simulation(animate_simulation=False)
+        myTraffic.visualize_animation()
 
 
 if __name__ == "__main__":
-    myTraffic = TrafficModel(road_length=30,
-                             max_velocity=5,
-                             prob_of_slowing=0.6,
-                             car_density=0.3, time=30)
-    myTraffic.run_simulation()
+    # task_one()
+    # task_two()
+    task_three()
