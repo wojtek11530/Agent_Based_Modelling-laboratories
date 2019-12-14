@@ -7,7 +7,7 @@ from matplotlib import animation
 
 
 class TrafficModel(object):
-
+    # car class with attributes: velocity and current location
     class Car:
         def __init__(self, location, traffic_model):
             self.traffic_model = traffic_model
@@ -15,15 +15,21 @@ class TrafficModel(object):
             self.velocity = 0
             self.location = location
 
+    # simulation class
     def __init__(self, road_length, max_velocity, car_density, prob_of_slowing, time):
         self.road_length = road_length
+
+        # list indicating if road cell is busy or not
         self.road_occupation = self.road_length * [False]
         self.max_velocity = max_velocity
         self.prob_of_slowing = prob_of_slowing
         self.time = time
 
         self.car_density = car_density
+        # list of all cars
         self.cars = []
+
+        # number of cars calcylated as floor of density * road length
         car_numbers = int(np.ceil(self.road_length * car_density))
         self.init_cars(car_numbers)
 
@@ -32,6 +38,8 @@ class TrafficModel(object):
 
     def init_cars(self, car_numbers):
         road_length = len(self.road_occupation)
+
+        # we chose random begginig location of cars
         locations = np.random.choice(np.arange(road_length), car_numbers, replace=False)
         for location in locations:
             new_car = self.Car(location, self)
@@ -58,6 +66,7 @@ class TrafficModel(object):
 
     def calculate_average_velocity(self):
         velocities = []
+        # we iteretae cars and sum their valocities
         for car in self.cars:
             velocities.append(car.velocity)
         return np.mean(velocities)
@@ -82,12 +91,15 @@ class TrafficModel(object):
 
     def accelerate_cars(self):
         for car in self.cars:
+            # increasing velocity if is less then maximum possible
             if car.velocity < self.max_velocity:
                 car.velocity = car.velocity + 1
 
     def slow_down_cars(self):
         for car in self.cars:
             for i in range(1, car.velocity):
+                # if there is some another car in front of the which distance is lower
+                # then its velocity we set velovity of car as that distance-1
                 if self.road_occupation[(car.location + i) % self.road_length] is True:
                     car.velocity = i - 1
 
@@ -99,6 +111,7 @@ class TrafficModel(object):
     def move_cars(self):
         for car in self.cars:
             self.road_occupation[car.location] = False
+            # we consider PBC
             car.location = (car.location + car.velocity) % self.road_length
             self.road_occupation[car.location] = True
 
