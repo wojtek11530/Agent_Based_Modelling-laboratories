@@ -259,6 +259,6 @@ def task_three():
 
 
 if __name__ == "__main__":
-    # task_one()
+    task_one()
     # task_two()
-    task_three()
+    # task_three()
