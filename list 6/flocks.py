@@ -259,6 +259,7 @@ class FlockSimulation:
                     angles = angles.flatten()
                     i = 0
 
+                    # Variables which will be values of velocity after rotations
                     new_vel_x = new_current_boid.velocity_x
                     new_vel_y = new_current_boid.velocity_y
 
@@ -299,7 +300,7 @@ class FlockSimulation:
     def animate_simulation(self):
 
         fig, ax = plt.subplots()
-        points, = ax.plot([], [], 'b.')
+        points, = ax.plot([], [], '.', c='#ff9900')
         frame_amount = self.time + 1
         interval_time = 50
 
@@ -309,14 +310,19 @@ class FlockSimulation:
             ax.set_xlim(0, self.lattice_size)
             ax.set_ylim(0, self.lattice_size)
             ax.set_aspect('equal')
-            rectangle = None
+            rectangles = []
             if self.obstacle:
-                rectangle = Rectangle((self.obstacle_x1, self.obstacle_y1), 0.1 * self.lattice_size,
-                                      0.1 * self.lattice_size,
-                                      facecolor='grey', alpha=1, edgecolor='black')
-                ax.add_patch(rectangle)
+                obstacle = Rectangle((self.obstacle_x1, self.obstacle_y1), 0.1 * self.lattice_size,
+                                     0.1 * self.lattice_size,
+                                     facecolor='#ffff66', alpha=1, edgecolor='#cc9900')
+                ax.add_patch(obstacle)
+                rectangles.append(obstacle)
+            background = Rectangle((0, 0), self.lattice_size, self.lattice_size,
+                                   facecolor='#0099ff', alpha=0.2)
+            ax.add_patch(background)
+            rectangles.append(background)
             points.set_data([], [])
-            return points, rectangle
+            return points, obstacle, background
 
         def animate(frame):
             x_locaction, y_location = self.locations_in_each_step[frame]
@@ -327,9 +333,12 @@ class FlockSimulation:
                 ydata.append(y)
 
             points.set_data(xdata, ydata)
+            # rectangle = Rectangle((0, 0), self.lattice_size, self.lattice_size,
+            #                      facecolor='#0099ff', alpha=0.6)
+            # ax.add_patch(rectangle)
             ax.set_title("Step no: " + str(frame))
             print("Frame " + str(frame) + " animated")
-            return points,
+            return points,  # rectangle
 
         anim = animation.FuncAnimation(fig, animate,
                                        init_func=init_animation,
@@ -338,7 +347,7 @@ class FlockSimulation:
                                        blit=True,
                                        repeat=False)
 
-        gif_title = "flocks" + \
+        gif_title = "test_flocks" + \
                     " boids_no=" + str(len(self.boids)) + \
                     " L=" + str(self.lattice_size) + \
                     " T=" + str(self.time) + \
@@ -356,8 +365,8 @@ class FlockSimulation:
 
 
 if __name__ == "__main__":
-    flock_simulation = FlockSimulation(boids_number=30, min_speed=0.2, max_speed=1.8, angle=2 / 3 * np.pi,
+    flock_simulation = FlockSimulation(boids_number=25, min_speed=0.2, max_speed=1.8, angle=2 / 3 * np.pi,
                                        max_distance=8, min_distance=4, weight_allignment=0.2, weight_cohesion=0.1,
-                                       weight_sep=0.15, lattice_size=100, time=100, obstacle=True)
+                                       weight_sep=0.15, lattice_size=100, time=200, obstacle=True)
 
     flock_simulation.run_simulation(animate_simulation=True)
