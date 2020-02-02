@@ -131,6 +131,7 @@ class FlockSimulation:
         self.memorize_current_locations_of_boids()
         for i in range(self.time):
             self.perform_step()
+            print('Step ' + str(i) + ' done')
 
         if animate_simulation:
             self.animate_simulation()
@@ -360,7 +361,8 @@ class FlockSimulation:
                     " w_s=" + str(self.weight_sep) + \
                     " obstacle=" + str(self.obstacle)
 
-        anim.save(gif_title + '.gif', writer='imagemagick')
+        plt.show()
+        # anim.save(gif_title + '.gif', writer='imagemagick')
         print(gif_title)
 
 
